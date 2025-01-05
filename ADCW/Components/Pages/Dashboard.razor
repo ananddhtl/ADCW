@@ -33,6 +33,28 @@
             </div>
         </div>
     </div>
+
+    <!-- Total Number of Transactions Section -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-white bg-info mb-3">
+                <div class="card-header">Total Transactions</div>
+                <div class="card-body">
+                    @totalTransactionsCount
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-secondary mb-3">
+                <div class="card-header">Total Transaction Amount</div>
+                <div class="card-body">
+                    @totalTransactionsAmount.ToString("C")
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Remaining and Cleared Debts Section -->
     <div class="row mb-4">
         <div class="col-md-4">
             <div class="card text-white bg-danger mb-3">
@@ -73,30 +95,30 @@
                         <tbody>
                             <tr>
                                 <td>Cash Inflow</td>
-                                <td>@highestCashInflow?.Amount.ToString("C") ?? "N/A"</td>
-                                <td>@highestCashInflow?.Source ?? "N/A"</td>
-                                <td>@highestCashInflow?.Date.ToShortDateString() ?? "N/A"</td>
-                                <td>@lowestCashInflow?.Amount.ToString("C") ?? "N/A"</td>
-                                <td>@lowestCashInflow?.Source ?? "N/A"</td>
-                                <td>@lowestCashInflow?.Date.ToShortDateString() ?? "N/A"</td>
+                                <td>@highestCashInflow?.Amount.ToString("C")</td>
+                                <td>@highestCashInflow?.Source</td>
+                                <td>@highestCashInflow?.Date.ToShortDateString()</td>
+                                <td>@lowestCashInflow?.Amount.ToString("C")</td>
+                                <td>@lowestCashInflow?.Source</td>
+                                <td>@lowestCashInflow?.Date.ToShortDateString()</td>
                             </tr>
                             <tr>
                                 <td>Cash Outflow</td>
-                                <td>@highestCashOutflow?.Amount.ToString("C") ?? "N/A"</td>
-                                <td>@highestCashOutflow?.Source ?? "N/A"</td>
-                                <td>@highestCashOutflow?.Date.ToShortDateString() ?? "N/A"</td>
-                                <td>@lowestCashOutflow?.Amount.ToString("C") ?? "N/A"</td>
-                                <td>@lowestCashOutflow?.Source ?? "N/A"</td>
-                                <td>@lowestCashOutflow?.Date.ToShortDateString() ?? "N/A"</td>
+                                <td>@highestCashOutflow?.Amount.ToString("C")</td>
+                                <td>@highestCashOutflow?.Source</td>
+                                <td>@highestCashOutflow?.Date.ToShortDateString()</td>
+                                <td>@lowestCashOutflow?.Amount.ToString("C")</td>
+                                <td>@lowestCashOutflow?.Source</td>
+                                <td>@lowestCashOutflow?.Date.ToShortDateString()</td>
                             </tr>
                             <tr>
                                 <td>Debt</td>
-                                <td>@highestDebt?.Amount.ToString("C") ?? "N/A"</td>
-                                <td>@highestDebt?.Source ?? "N/A"</td>
-                                <td>@highestDebt?.DueDate.ToShortDateString() ?? "N/A"</td>
-                                <td>@lowestDebt?.Amount.ToString("C") ?? "N/A"</td>
-                                <td>@lowestDebt?.Source ?? "N/A"</td>
-                                <td>@lowestDebt?.DueDate.ToShortDateString() ?? "N/A"</td>
+                                <td>@highestDebt?.Amount.ToString("C")</td>
+                                <td>@highestDebt?.Source</td>
+                                <td>@highestDebt?.DueDate.ToShortDateString()</td>
+                                <td>@lowestDebt?.Amount.ToString("C")</td>
+                                <td>@lowestDebt?.Source</td>
+                                <td>@lowestDebt?.DueDate.ToShortDateString()</td>
                             </tr>
                         </tbody>
                     </table>
@@ -104,9 +126,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Remaining and Cleared Debts Section -->
-   
 
     <!-- Pending Debts Section -->
     <div class="row mb-4">
@@ -166,6 +185,10 @@
     private int totalDebtsCount => debts.Count;
     private int remainingDebtsCount => pendingDebts.Count;
     private int clearedDebtsCount => debts.Count - remainingDebtsCount;
+
+    // Total Transactions and Amount
+    private int totalTransactionsCount => totalCashInflowsCount + totalDebtsCount - totalCashOutflowsCount;
+    private decimal totalTransactionsAmount => cashInflows.Sum(c => c.Amount) + debts.Sum(d => d.Amount) - cashOutflows.Sum(c => c.Amount);
 
     // Only get the pending debts
     private List<Debt> pendingDebts => debts.Where(d => !d.IsCleared).ToList();
