@@ -80,6 +80,19 @@
             <div class="card text-white bg-info mb-3">
                 <div class="card-header">Highest and Lowest Transactions</div>
                 <div class="card-body">
+                    <!-- Date Filters -->
+                    <div class="mb-3">
+                        <label for="fromDateFilter">From Date:</label>
+                        <InputDate @bind-Value="fromDateFilter1" class="form-control mb-3" />
+
+                        <label for="toDateFilter">To Date:</label>
+                        <InputDate @bind-Value="toDateFilter1" class="form-control mb-3" />
+
+                        <!-- Apply Filter Button -->
+                        <button class="btn btn-primary mt-3" @onclick="ApplyDateFilter">Apply Filter</button>
+                    </div>
+
+                    <!-- Table Displaying Filtered Transactions -->
                     <table class="table table-striped">
                         <thead>
                             <tr>
@@ -93,6 +106,7 @@
                             </tr>
                         </thead>
                         <tbody>
+                            <!-- Cash Inflow Row -->
                             <tr>
                                 <td>Cash Inflow</td>
                                 <td>@highestCashInflow?.Amount.ToString("C")</td>
@@ -102,6 +116,7 @@
                                 <td>@lowestCashInflow?.Source</td>
                                 <td>@lowestCashInflow?.Date.ToShortDateString()</td>
                             </tr>
+                            <!-- Cash Outflow Row -->
                             <tr>
                                 <td>Cash Outflow</td>
                                 <td>@highestCashOutflow?.Amount.ToString("C")</td>
@@ -111,6 +126,7 @@
                                 <td>@lowestCashOutflow?.Source</td>
                                 <td>@lowestCashOutflow?.Date.ToShortDateString()</td>
                             </tr>
+                            <!-- Debt Row -->
                             <tr>
                                 <td>Debt</td>
                                 <td>@highestDebt?.Amount.ToString("C")</td>
@@ -127,12 +143,23 @@
         </div>
     </div>
 
-    <!-- Pending Debts Section -->
+
+
     <div class="row mb-4">
         <div class="col-md-12">
             <div class="card text-white bg-info mb-3">
                 <div class="card-header">Pending Debts</div>
                 <div class="card-body">
+                    <div class="form-group">
+                        <label for="fromDateFilter">From Date:</label>
+                        <InputDate @bind-Value="fromDateFilter" class="form-control mb-3" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="toDateFilter">To Date:</label>
+                        <InputDate @bind-Value="toDateFilter" class="form-control mb-3" />
+                    </div>
+
                     @if (pendingDebts == null || !pendingDebts.Any())
                     {
                         <p>No pending debts.</p>
@@ -168,6 +195,8 @@
         </div>
     </div>
 
+
+
 </div>
 
 @code {
@@ -178,6 +207,13 @@
     private string debtFilePath = @"D:\\AD\\debt.json";
     private string cashInflowFilePath = @"D:\\AD\\cashinflow.json";
     private string cashOutflowFilePath = @"D:\\AD\\cashoutflow.json";
+
+    // Date filters
+    private DateTime? fromDateFilter;
+    private DateTime? toDateFilter;
+
+    private DateTime? fromDateFilter1;
+    private DateTime? toDateFilter1;
 
     // Calculating total values for display
     private int totalCashInflowsCount => cashInflows.Count;
@@ -191,17 +227,19 @@
     private decimal totalTransactionsAmount => cashInflows.Sum(c => c.Amount) + debts.Sum(d => d.Amount) - cashOutflows.Sum(c => c.Amount);
 
     // Only get the pending debts
-    private List<Debt> pendingDebts => debts.Where(d => !d.IsCleared).ToList();
+    private List<Debt> pendingDebts => debts
+        .Where(d => !d.IsCleared && (fromDateFilter == null || d.DueDate >= fromDateFilter) && (toDateFilter == null || d.DueDate <= toDateFilter))
+        .ToList();
 
-    // Highest and Lowest Transactions
-    private CashInflow highestCashInflow => cashInflows.OrderByDescending(c => c.Amount).FirstOrDefault();
-    private CashInflow lowestCashInflow => cashInflows.OrderBy(c => c.Amount).FirstOrDefault();
+    // Highest and Lowest Transactions with date filter applied
+    private CashInflow highestCashInflow => GetFilteredCashInflows().OrderByDescending(c => c.Amount).FirstOrDefault();
+    private CashInflow lowestCashInflow => GetFilteredCashInflows().OrderBy(c => c.Amount).FirstOrDefault();
 
-    private CashOutflow highestCashOutflow => cashOutflows.OrderByDescending(c => c.Amount).FirstOrDefault();
-    private CashOutflow lowestCashOutflow => cashOutflows.OrderBy(c => c.Amount).FirstOrDefault();
+    private CashOutflow highestCashOutflow => GetFilteredCashOutflows().OrderByDescending(c => c.Amount).FirstOrDefault();
+    private CashOutflow lowestCashOutflow => GetFilteredCashOutflows().OrderBy(c => c.Amount).FirstOrDefault();
 
-    private Debt highestDebt => debts.OrderByDescending(d => d.Amount).FirstOrDefault();
-    private Debt lowestDebt => debts.OrderBy(d => d.Amount).FirstOrDefault();
+    private Debt highestDebt => GetFilteredDebts().OrderByDescending(d => d.Amount).FirstOrDefault();
+    private Debt lowestDebt => GetFilteredDebts().OrderBy(d => d.Amount).FirstOrDefault();
 
     protected override async Task OnInitializedAsync()
     {
@@ -231,6 +269,58 @@
                 cashOutflows = JsonSerializer.Deserialize<List<CashOutflow>>(cashOutflowJsonContent);
             }
         }
+    }
+
+    // Apply date filter
+    private void ApplyDateFilter()
+    {
+        // Simply trigger the filtering when the button is clicked
+        StateHasChanged();
+    }
+
+    // Method to filter CashInflows based on date range
+    private IEnumerable<CashInflow> GetFilteredCashInflows()
+    {
+        var inflows = cashInflows.AsEnumerable();
+        if (fromDateFilter1.HasValue)
+        {
+            inflows = inflows.Where(i => i.Date >= fromDateFilter1.Value);
+        }
+        if (toDateFilter1.HasValue)
+        {
+            inflows = inflows.Where(i => i.Date <= toDateFilter1.Value);
+        }
+        return inflows;
+    }
+
+    // Method to filter CashOutflows based on date range
+    private IEnumerable<CashOutflow> GetFilteredCashOutflows()
+    {
+        var outflows = cashOutflows.AsEnumerable();
+        if (fromDateFilter1.HasValue)
+        {
+            outflows = outflows.Where(o => o.Date >= fromDateFilter1.Value);
+        }
+        if (toDateFilter1.HasValue)
+        {
+            outflows = outflows.Where(o => o.Date <= toDateFilter1.Value);
+        }
+        return outflows;
+    }
+
+    // Method to filter Debts based on date range
+    private IEnumerable<Debt> GetFilteredDebts()
+    {
+        var debtsList = debts.AsEnumerable();
+        if (fromDateFilter1.HasValue)
+        {
+            debtsList = debtsList.Where(d => d.DueDate >= fromDateFilter1.Value);
+        }
+        if (toDateFilter1.HasValue)
+        {
+            debtsList = debtsList.Where(d => d.DueDate <= toDateFilter1.Value);
+        }
+        return debtsList;
     }
 
     // Define the Debt class
@@ -265,3 +355,4 @@
         public string Notes { get; set; }
     }
 }
+
