@@ -1,6 +1,8 @@
 ﻿@page "/"
 @using System.Text.Json
-
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@inject NavigationManager NavigationManager
 
 <div class="container d-flex justify-content-center align-items-center min-vh-100">
     <div class="card p-4" style="width: 100%; max-width: 400px;">
@@ -32,7 +34,6 @@
 
             <button type="submit" class="btn btn-primary w-100">Submit</button>
         </EditForm>
-        <NavLink class="btn btn-secondary w-100 mt-3" href="/dashboard">Go to Dashboard</NavLink>
     </div>
 </div>
 
@@ -41,17 +42,24 @@
 
     [Inject] private IJSRuntime JS { get; set; }
 
-
     private async Task HandleValidSubmit()
     {
+        if (loginModel.Username == "admin" && loginModel.Password == "123456")
+        {
+            // Convert the model to JSON and save it to localStorage
+            var jsonData = JsonSerializer.Serialize(loginModel);
 
-        // Convert the model to JSON and save it to localStorage
-        var jsonData = JsonSerializer.Serialize(loginModel);
+            // Save to localStorage using JavaScript interop
+            await JS.InvokeVoidAsync("localStorage.setItem", "userCredentials", jsonData);
+            await JS.InvokeVoidAsync("localStorage.setItem", "userCurrency", loginModel.Currency);
 
-        // Save to localStorage using JavaScript interop
-        await JS.InvokeVoidAsync("localStorage.setItem", "userCredentials", jsonData);
-
-
+            // Redirect to dashboard
+            NavigationManager.NavigateTo("/dashboard");
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "Invalid username or password");
+        }
     }
 
     public class LoginModel
