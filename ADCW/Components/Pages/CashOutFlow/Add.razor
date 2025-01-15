@@ -69,12 +69,12 @@
     private List<Tag> tags = new List<Tag>();
     private string cashOutflowFilePath = @"D:\AD\cashoutflow.json";
     private string cashInflowFilePath = @"D:\AD\cashinflow.json";
+    private string allTransactionsFilePath = @"D:\AD\alltransactions.json";
     private decimal totalOutflow = 0;
     private decimal totalInflow = 0;
     private decimal totalBalance = 0;
     private string errorMessage = string.Empty;
 
-  
     protected override async Task OnInitializedAsync()
     {
         string tagsFilePath = @"D:\AD\tags.json";
@@ -84,10 +84,8 @@
             tags = JsonSerializer.Deserialize<List<Tag>>(jsonContent);
         }
 
-      
         transaction.Date = DateTime.Today;
 
-       
         await LoadCashFlows();
     }
 
@@ -95,7 +93,6 @@
     {
         try
         {
-          
             if (File.Exists(cashOutflowFilePath))
             {
                 var outflowContent = await File.ReadAllTextAsync(cashOutflowFilePath);
@@ -103,7 +100,6 @@
                 totalOutflow = cashOutflows.Sum(c => c.Amount);
             }
 
-           
             if (File.Exists(cashInflowFilePath))
             {
                 var inflowContent = await File.ReadAllTextAsync(cashInflowFilePath);
@@ -111,7 +107,6 @@
                 totalInflow = cashInflows.Sum(c => c.Amount);
             }
 
-            
             totalBalance = totalInflow - totalOutflow;
         }
         catch (Exception ex)
@@ -120,7 +115,6 @@
         }
     }
 
-   
     private void HandleTagSelection(ChangeEventArgs e)
     {
         var selectedValues = e.Value as IEnumerable<string>;
@@ -132,7 +126,7 @@
 
     private async Task HandleValidSubmit()
     {
-        errorMessage = string.Empty; 
+        errorMessage = string.Empty;
 
         if (transaction.Amount > totalBalance)
         {
@@ -142,7 +136,6 @@
 
         List<CashOverflow> cashOutflows = new List<CashOverflow>();
 
-       
         if (File.Exists(cashOutflowFilePath))
         {
             var existingContent = await File.ReadAllTextAsync(cashOutflowFilePath);
@@ -152,18 +145,45 @@
             }
         }
 
-       
         int nextId = cashOutflows.Any() ? cashOutflows.Max(c => c.Id) + 1 : 1;
         transaction.Id = nextId;
 
-       
         cashOutflows.Add(transaction);
 
-        // Save back to the file
+        // Save cash outflow data
         var jsonContent = JsonSerializer.Serialize(cashOutflows, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(cashOutflowFilePath, jsonContent);
 
-        Console.WriteLine($"Transaction with Id {transaction.Id} saved!");
+        // Create all transaction entry
+        var allTransaction = new AllTransaction
+            {
+                Id = nextId,
+                Amount = transaction.Amount,
+                Date = transaction.Date,
+                Notes = transaction.Notes,
+                Tags = transaction.Tags,
+                TagsId = tags.Where(tag => transaction.Tags.Contains(tag.Title)).Select(tag => tag.Id).ToList(),
+                IsCashInFlow = false,
+                IsCashOutFlow = transaction.Id,
+                IsDebt = false
+            };
+
+        List<AllTransaction> allTransactions = new List<AllTransaction>();
+
+        if (File.Exists(allTransactionsFilePath))
+        {
+            var existingAllTransactions = await File.ReadAllTextAsync(allTransactionsFilePath);
+            if (!string.IsNullOrWhiteSpace(existingAllTransactions))
+            {
+                allTransactions = JsonSerializer.Deserialize<List<AllTransaction>>(existingAllTransactions);
+            }
+        }
+
+        allTransactions.Add(allTransaction);
+
+        // Save all transactions data
+        var allTransactionsJsonContent = JsonSerializer.Serialize(allTransactions, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(allTransactionsFilePath, allTransactionsJsonContent);
 
         // Update the total outflow balance
         totalOutflow += transaction.Amount;
@@ -175,7 +195,6 @@
         transaction = new CashOverflow();
     }
 
-    // Define the CashOverflow class
     public class CashOverflow
     {
         public int Id { get; set; }
@@ -187,10 +206,22 @@
         public string TransactionType { get; set; } = "Debit";
     }
 
-    // Define the Tag class
     public class Tag
     {
         public int Id { get; set; }
         public string Title { get; set; }
+    }
+
+    public class AllTransaction
+    {
+        public int Id { get; set; }
+        public decimal Amount { get; set; }
+        public DateTime Date { get; set; }
+        public string Notes { get; set; }
+        public List<string> Tags { get; set; } = new List<string>();
+        public List<int> TagsId { get; set; } = new List<int>();
+        public bool IsCashInFlow { get; set; }
+        public int IsCashOutFlow { get; set; }
+        public bool IsDebt { get; set; }
     }
 }

@@ -57,7 +57,7 @@ else
 }
 @code {
     private List<Transaction> transactions = new List<Transaction>();
-    private string transactionsFilePath = @"D:\AD\transactions.json";
+    private string transactionsFilePath = @"D:\AD\alltransactions.json";
     protected override async Task OnInitializedAsync()
     {
         if (File.Exists(transactionsFilePath))
