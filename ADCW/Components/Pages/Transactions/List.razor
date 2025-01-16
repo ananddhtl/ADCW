@@ -1,63 +1,134 @@
 ﻿@page "/listtransactions"
 @using System.Text.Json
 @using System.IO
+@using System.Linq;
+
 <h3>List of Transactions</h3>
 
-@if (transactions.Any())
-{
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Amount</th>
-                <th>Transaction Type</th>
-                <th>Date</th>
-                <th>Source</th>
-                <th>Notes</th>
-                <th>Tags</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var transaction in transactions)
+<div class="row mb-3">
+    <div class="col-md-3">
+        <label for="transactionType" class="form-label">Transaction Type</label>
+        <select id="transactionType" class="form-select" @bind="selectedTransactionType">
+            <option value="">All Types</option>
+            <option value="CashInFlow">Cash Inflow</option>
+            <option value="CashOutFlow">Cash Outflow</option>
+            <option value="Debt">Debt</option>
+            <option value="Unknown">Unknown</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label for="source" class="form-label">Source</label>
+        <input type="text" id="source" class="form-control" @bind="selectedSource" placeholder="Filter by source" />
+    </div>
+    <div class="col-md-2">
+        <label for="dateFrom" class="form-label">From Date</label>
+        <input type="date" id="dateFrom" class="form-control" @bind="selectedDateFrom" />
+    </div>
+    <div class="col-md-2">
+        <label for="dateTo" class="form-label">To Date</label>
+        <input type="date" id="dateTo" class="form-control" @bind="selectedDateTo" />
+    </div>
+    <div class="col-md-2">
+        <label for="tags" class="form-label">Tags</label>
+        <input type="text" id="tags" class="form-control" @bind="selectedTags" placeholder="Filter by tags (comma separated)" />
+    </div>
+</div>
+
+<button class="btn btn-primary" @onclick="ApplyFilters">Filter</button>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Amount</th>
+            <th>Transaction Type</th>
+            <th>Date</th>
+            <th>Source</th>
+            <th>Notes</th>
+            <th>Tags</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (filteredTransactions.Any())
+        {
+            @foreach (var transaction in filteredTransactions)
             {
-                <tr>
-                    <td>@transaction.Id</td>
-                    <td>@transaction.Amount.ToString("C")</td>
-                    <td>@transaction.TransactionType</td>
-                    <td>@transaction.Date.ToString("yyyy-MM-dd")</td>
-                    <td>@transaction.Source</td>
-                    <td>@transaction.Notes</td>
-                    <td>
-                        @if (transaction.Tags.Any())
+                        <tr>
+                            <td>@transaction.Id</td>
+                            <td>@transaction.Amount.ToString("C")</td>
+                            <td>
+                        @if (transaction.IsCashInFlow > 0)
                         {
-                            <ul>
-                                @foreach (var tag in transaction.Tags)
-                                {
-                                    <li>@tag</li>
-                                }
-                            </ul>
+                                        <span>Cash Inflow - #@transaction.Id</span>
+                        }
+                        else if (transaction.IsCashOutFlow > 0)
+                        {
+                                        <span>Cash Outflow - #@transaction.Id</span>
+                        }
+                        else if (transaction.IsDebt > 0)
+                        {
+                                        <span>Debt - #@transaction.Id</span>
                         }
                         else
                         {
-                            <span>No tags</span>
+                                        <span>Unknown - #@transaction.Id</span>
                         }
-                    </td>
-                    <td>
-                        <button class="btn btn-danger" @onclick="() => DeleteTransaction(transaction.Id)">Delete</button>
-                    </td>
-                </tr>
+                            </td>
+                            <td>@transaction.Date.ToString("yyyy-MM-dd")</td>
+                            <td>@transaction.Source</td>
+                            <td>
+                        @if (!string.IsNullOrEmpty(transaction.Notes))
+                        {
+                            @transaction.Notes
+                        }
+                        else
+                        {
+                                        <span>No notes</span>
+                        }
+                            </td>
+                            <td>
+                        @if (transaction.Tags != null && transaction.Tags.Any())
+                        {
+                                        <ul>
+                                @foreach (var tag in transaction.Tags)
+                                {
+                                                    <li>@tag</li>
+                                }
+                                        </ul>
+                        }
+                        else
+                        {
+                                        <span>No tags</span>
+                        }
+                            </td>
+                            <td>
+                                <button class="btn btn-danger" @onclick="() => DeleteTransaction(transaction.Id)">Delete</button>
+                            </td>
+                        </tr>
             }
-        </tbody>
-    </table>
-}
-else
-{
-    <p>No transactions found.</p>
-}
+        }
+        else
+        {
+                <tr>
+                    <td colspan="8" class="text-center">No transactions found.</td>
+                </tr>
+        }
+    </tbody>
+</table>
+
 @code {
     private List<Transaction> transactions = new List<Transaction>();
+    private List<Transaction> filteredTransactions = new List<Transaction>();
+
+    private string selectedTransactionType = string.Empty;
+    private string selectedSource = string.Empty;
+    private string selectedTags = string.Empty;
+    private DateTime? selectedDateFrom = null;
+    private DateTime? selectedDateTo = null;
+
     private string transactionsFilePath = @"D:\AD\alltransactions.json";
+
     protected override async Task OnInitializedAsync()
     {
         if (File.Exists(transactionsFilePath))
@@ -66,15 +137,34 @@ else
             if (!string.IsNullOrWhiteSpace(jsonContent))
             {
                 transactions = JsonSerializer.Deserialize<List<Transaction>>(jsonContent);
+                filteredTransactions = transactions.ToList();
             }
         }
     }
+
+    private void ApplyFilters()
+    {
+        filteredTransactions = transactions.Where(t =>
+            (string.IsNullOrEmpty(selectedTransactionType) ||
+             (selectedTransactionType == "CashInFlow" && t.IsCashInFlow > 0) ||
+             (selectedTransactionType == "CashOutFlow" && t.IsCashOutFlow > 0) ||
+             (selectedTransactionType == "Debt" && t.IsDebt > 0) ||
+             (selectedTransactionType == "Unknown" && t.IsCashInFlow == 0 && t.IsCashOutFlow == 0 && t.IsDebt == 0)) &&
+            (string.IsNullOrEmpty(selectedSource) || t.Source.Contains(selectedSource, StringComparison.OrdinalIgnoreCase)) &&
+            (!selectedDateFrom.HasValue || t.Date >= selectedDateFrom.Value) &&
+            (!selectedDateTo.HasValue || t.Date <= selectedDateTo.Value) &&
+            (string.IsNullOrEmpty(selectedTags) || t.Tags.Any(tag => tag.Contains(selectedTags, StringComparison.OrdinalIgnoreCase)))
+        ).ToList();
+    }
+
     private async Task DeleteTransaction(int transactionId)
     {
         transactions = transactions.Where(t => t.Id != transactionId).ToList();
         var jsonContent = JsonSerializer.Serialize(transactions, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(transactionsFilePath, jsonContent);
+        ApplyFilters();
     }
+
     public class Transaction
     {
         public int Id { get; set; }
@@ -83,6 +173,8 @@ else
         public string Source { get; set; }
         public string Notes { get; set; }
         public List<string> Tags { get; set; } = new List<string>();
-        public string TransactionType { get; set; }
+        public int IsCashInFlow { get; set; }
+        public int IsCashOutFlow { get; set; }
+        public int IsDebt { get; set; }
     }
 }

@@ -111,11 +111,11 @@
                 Amount = transaction.Amount,
                 Date = transaction.Date,
                 Notes = transaction.Notes,
-                Tags = transaction.Tags, // Saving tags directly
-                TagsId = tags.Where(tag => transaction.Tags.Contains(tag.Title)).Select(tag => tag.Id).ToList(),
+                Tags = transaction.Tags, 
+               
                 IsCashInFlow = transaction.Id,
-                IsCashOutFlow = false,
-                IsDebt = false
+                IsCashOutFlow = 0,
+                IsDebt = 0
             };
 
         List<AllTransaction> allTransactions = new List<AllTransaction>();
@@ -160,10 +160,10 @@
         public decimal Amount { get; set; }
         public DateTime Date { get; set; }
         public string Notes { get; set; }
-        public List<string> Tags { get; set; } = new List<string>(); // Tags saved directly
-        public List<int> TagsId { get; set; } = new List<int>();
+        public List<string> Tags { get; set; } = new List<string>(); 
+        
         public int IsCashInFlow { get; set; }
-        public bool IsCashOutFlow { get; set; }
-        public bool IsDebt { get; set; }
+        public int IsCashOutFlow { get; set; }
+        public int IsDebt { get; set; }
     }
 }

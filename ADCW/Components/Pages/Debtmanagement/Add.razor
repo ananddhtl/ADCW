@@ -53,6 +53,7 @@
 @code {
     private Debt debt = new Debt();
     private string debtFilePath = @"D:\AD\debt.json";
+    private string allTransactionsFilePath = @"D:\AD\alltransactions.json";
 
     protected override void OnInitialized()
     {
@@ -69,7 +70,7 @@
             var existingContent = await File.ReadAllTextAsync(debtFilePath);
             if (!string.IsNullOrWhiteSpace(existingContent))
             {
-                debts = JsonSerializer.Deserialize<List<Debt>>(existingContent);
+                debts = JsonSerializer.Deserialize<List<Debt>>(existingContent) ?? new List<Debt>();
             }
         }
 
@@ -80,17 +81,47 @@
         // Add the new debt
         debts.Add(debt);
 
-        // Save back to the file
+        // Save back to the debt file
         var jsonContent = JsonSerializer.Serialize(debts, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(debtFilePath, jsonContent);
 
-        Console.WriteLine($"Debt with Id {debt.Id} saved!");
+        // Save to alltransactions.json with null notes and tags
+        List<AllTransaction> allTransactions = new List<AllTransaction>();
+
+        if (File.Exists(allTransactionsFilePath))
+        {
+            var existingTransactions = await File.ReadAllTextAsync(allTransactionsFilePath);
+            if (!string.IsNullOrWhiteSpace(existingTransactions))
+            {
+                allTransactions = JsonSerializer.Deserialize<List<AllTransaction>>(existingTransactions) ?? new List<AllTransaction>();
+            }
+        }
+
+        var newTransaction = new AllTransaction
+            {
+                Id = nextId,
+                Amount = debt.Amount,
+                Date = debt.DueDate,
+                Notes = null,
+                Tags = null,
+                TagsId = new List<int>(),
+                Source = debt.Source,
+                IsCashInFlow = 0, // Changed from bool to int (0 for false)
+                IsCashOutFlow = 0, // Changed from bool to int (0 for false)
+                IsDebt = debt.Id // Now saving the actual saved debt Id
+            };
+
+        allTransactions.Add(newTransaction);
+
+        var allTransactionsJsonContent = JsonSerializer.Serialize(allTransactions, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(allTransactionsFilePath, allTransactionsJsonContent);
+
+        Console.WriteLine($"Debt with Id {debt.Id} and AllTransaction entry saved!");
 
         // Reset the form after saving
         debt = new Debt();
     }
 
-    // Define the Debt class
     public class Debt
     {
         public int Id { get; set; }
@@ -100,5 +131,19 @@
         public DateTime? ClearedDate { get; set; }
         public string Notes { get; set; }
         public DateTime DueDate { get; set; }
+    }
+
+    public class AllTransaction
+    {
+        public int Id { get; set; }
+        public decimal Amount { get; set; }
+        public DateTime Date { get; set; }
+        public string Notes { get; set; }
+        public List<string> Tags { get; set; }
+        public List<int> TagsId { get; set; }
+        public string Source { get; set; }
+        public int IsCashInFlow { get; set; }
+        public int IsCashOutFlow { get; set; }
+        public int IsDebt { get; set; } // Now storing the saved Debt Id
     }
 }

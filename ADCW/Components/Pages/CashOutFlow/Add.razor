@@ -16,7 +16,6 @@
                 <label for="amount" class="form-label">Amount</label>
                 <InputNumber id="amount" class="form-control" @bind-Value="transaction.Amount" />
             </div>
-
             <div class="mb-3">
                 <label for="date" class="form-label">Date</label>
                 <InputDate id="date" class="form-control" @bind-Value="transaction.Date" />
@@ -26,12 +25,10 @@
                 <label for="source" class="form-label">Source</label>
                 <InputText id="source" class="form-control" @bind-Value="transaction.Source" />
             </div>
-
             <div class="mb-3">
                 <label for="notes" class="form-label">Notes</label>
                 <InputText id="notes" class="form-control" @bind-Value="transaction.Notes" />
             </div>
-
             <div class="mb-3">
                 <label for="tags" class="form-label">Tags</label>
                 <select id="tags" class="form-select" multiple @onchange="HandleTagSelection">
@@ -85,6 +82,7 @@
         }
 
         transaction.Date = DateTime.Today;
+        transaction.TransactionType = "Debit";
 
         await LoadCashFlows();
     }
@@ -117,8 +115,7 @@
 
     private void HandleTagSelection(ChangeEventArgs e)
     {
-        var selectedValues = e.Value as IEnumerable<string>;
-        if (selectedValues != null)
+        if (e.Value is IEnumerable<string> selectedValues)
         {
             transaction.Tags = selectedValues.ToList();
         }
@@ -141,7 +138,7 @@
             var existingContent = await File.ReadAllTextAsync(cashOutflowFilePath);
             if (!string.IsNullOrWhiteSpace(existingContent))
             {
-                cashOutflows = JsonSerializer.Deserialize<List<CashOverflow>>(existingContent);
+                cashOutflows = JsonSerializer.Deserialize<List<CashOverflow>>(existingContent) ?? new List<CashOverflow>();
             }
         }
 
@@ -150,26 +147,27 @@
 
         cashOutflows.Add(transaction);
 
-        // Save cash outflow data
         var jsonContent = JsonSerializer.Serialize(cashOutflows, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(cashOutflowFilePath, jsonContent);
 
-        // Create all transaction entry
+        totalOutflow += transaction.Amount;
+        totalBalance = totalInflow - totalOutflow;
+
         var allTransaction = new AllTransaction
             {
                 Id = nextId,
                 Amount = transaction.Amount,
                 Date = transaction.Date,
                 Notes = transaction.Notes,
+                Source = transaction.Source,
                 Tags = transaction.Tags,
-                TagsId = tags.Where(tag => transaction.Tags.Contains(tag.Title)).Select(tag => tag.Id).ToList(),
-                IsCashInFlow = false,
+              
                 IsCashOutFlow = transaction.Id,
-                IsDebt = false
+                IsCashInFlow = 0,
+                IsDebt = 0
             };
-
+       
         List<AllTransaction> allTransactions = new List<AllTransaction>();
-
         if (File.Exists(allTransactionsFilePath))
         {
             var existingAllTransactions = await File.ReadAllTextAsync(allTransactionsFilePath);
@@ -177,21 +175,10 @@
             {
                 allTransactions = JsonSerializer.Deserialize<List<AllTransaction>>(existingAllTransactions);
             }
-        }
-
+        }      
         allTransactions.Add(allTransaction);
-
-        // Save all transactions data
         var allTransactionsJsonContent = JsonSerializer.Serialize(allTransactions, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(allTransactionsFilePath, allTransactionsJsonContent);
-
-        // Update the total outflow balance
-        totalOutflow += transaction.Amount;
-
-        // Update total balance (Inflow - Outflow)
-        totalBalance = totalInflow - totalOutflow;
-
-        // Reset the form after saving
         transaction = new CashOverflow();
     }
 
@@ -203,7 +190,7 @@
         public string Source { get; set; }
         public string Notes { get; set; }
         public List<string> Tags { get; set; } = new List<string>();
-        public string TransactionType { get; set; } = "Debit";
+        public string TransactionType { get; set; }
     }
 
     public class Tag
@@ -218,10 +205,11 @@
         public decimal Amount { get; set; }
         public DateTime Date { get; set; }
         public string Notes { get; set; }
+        public string Source { get; set; }
         public List<string> Tags { get; set; } = new List<string>();
-        public List<int> TagsId { get; set; } = new List<int>();
-        public bool IsCashInFlow { get; set; }
+      
+        public int IsCashInFlow { get; set; }
         public int IsCashOutFlow { get; set; }
-        public bool IsDebt { get; set; }
+        public int IsDebt { get; set; }
     }
 }
