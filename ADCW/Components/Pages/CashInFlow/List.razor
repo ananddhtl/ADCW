@@ -1,6 +1,7 @@
 ﻿@page "/listcashinflow"
 @using System.Text.Json
 @using System.IO
+@inject Microsoft.AspNetCore.Components.NavigationManager navManager
 
 <h3 class="mb-4">List Cash In Flow</h3>
 
@@ -9,7 +10,12 @@
         <span class="bi bi-plus-circle" aria-hidden="true"></span> Add Cash In Flow
     </NavLink>
 </div>
-
+@if (navManager.Uri.Contains("success=true"))
+{
+    <div class="alert alert-success" role="alert">
+        Cashin  added successfully!
+    </div>
+}
 <div class="card shadow-sm">
     <div class="card-header">
         <h5 class="card-title mb-0">Cash In Flow List</h5>
@@ -103,6 +109,7 @@
     {
         cashInflows.RemoveAll(inflow => inflow.Id == id);
         await File.WriteAllTextAsync(cashInflowFilePath, JsonSerializer.Serialize(cashInflows));
+
     }
 
 }

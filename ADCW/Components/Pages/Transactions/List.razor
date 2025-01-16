@@ -102,9 +102,7 @@
                                         <span>No tags</span>
                         }
                             </td>
-                            <td>
-                                <button class="btn btn-danger" @onclick="() => DeleteTransaction(transaction.Id)">Delete</button>
-                            </td>
+                           
                         </tr>
             }
         }
@@ -157,13 +155,7 @@
         ).ToList();
     }
 
-    private async Task DeleteTransaction(int transactionId)
-    {
-        transactions = transactions.Where(t => t.Id != transactionId).ToList();
-        var jsonContent = JsonSerializer.Serialize(transactions, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(transactionsFilePath, jsonContent);
-        ApplyFilters();
-    }
+   
 
     public class Transaction
     {

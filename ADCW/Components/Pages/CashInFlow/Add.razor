@@ -2,6 +2,8 @@
 @using System.Text.Json
 @using System.IO
 @using ADCW.Data
+@inject NavigationManager NavigationManager
+
 
 <h3 class="mb-4">Add Cash Inflow</h3>
 
@@ -135,6 +137,7 @@
         await File.WriteAllTextAsync(allTransactionsFilePath, allTransactionsJsonContent);
 
         transaction = new CashOverflow();
+        NavigationManager.NavigateTo("/listcashinflow?success=true");
     }
 
     public class CashOverflow
